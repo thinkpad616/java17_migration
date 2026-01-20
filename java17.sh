@@ -1,30 +1,26 @@
 #!/usr/bin/env bash
 
-# -------------------------------
+# --------------------------------------
 # Install jenv via Homebrew
-# -------------------------------
+# --------------------------------------
 _brew_install_jenv() {
   echo "Installing jenv via Homebrew"
   brew install jenv
   echo "Finished installing jenv via Homebrew"
 }
 
-# -------------------------------
-# Clone jenv manually if brew unavailable
-# -------------------------------
+# --------------------------------------
+# Clone jenv manually when brew is unavailable
+# --------------------------------------
 _clone_jenv_optional() {
   if [ ! -d ~/.jenv ]; then
-    # If dev can't clone from public GitHub we exit forcibly here
-    git clone https://github.com/jenv/jenv.git ~/.jenv || { 
-      echo "Failed to configure jenv" >&2
-      exit 1
-    }
+    git clone https://github.com/jenv/jenv.git ~/.jenv || { >&2 echo "Failed to configure jenv"; exit 1; }
   fi
 }
 
-# -------------------------------
-# Configure jenv for bash shells
-# -------------------------------
+# --------------------------------------
+# Configure jenv for bash
+# --------------------------------------
 _configure_jenv_bash() {
   if [ -f ~/.bash_profile ]; then
     if ! grep -q "jenv" ~/.bash_profile; then
@@ -34,9 +30,9 @@ _configure_jenv_bash() {
   fi
 }
 
-# -------------------------------
-# Configure jenv for zsh shells
-# -------------------------------
+# --------------------------------------
+# Configure jenv for zsh
+# --------------------------------------
 _configure_jenv_zsh() {
   if [ -f ~/.zshrc ]; then
     if ! grep -q "jenv" ~/.zshrc; then
@@ -46,12 +42,12 @@ _configure_jenv_zsh() {
   fi
 }
 
-# -------------------------------
-# Install jenv (detect brew or clone)
-# -------------------------------
+# --------------------------------------
+# Install jenv
+# --------------------------------------
 install_jenv() {
-  if ! command -v jenv >/dev/null; then
-    if command -v brew >/dev/null; then
+  if ! command -v jenv > /dev/null; then
+    if command -v brew > /dev/null; then
       _brew_install_jenv
     else
       _clone_jenv_optional
@@ -60,7 +56,6 @@ install_jenv() {
     _configure_jenv_bash
     _configure_jenv_zsh
 
-    # ensure jenv can be used in current shell
     eval "$(jenv init -)"
   else
     if [ "quieter" != "$1" ]; then
@@ -69,9 +64,9 @@ install_jenv() {
   fi
 }
 
-# -------------------------------
-# Self-service installation for Corretto 17 (macOS)
-# -------------------------------
+# --------------------------------------
+# Install Amazon Corretto 17 via Self Service
+# --------------------------------------
 _self_service_install_java_17() {
   echo "Install Amazon Corretto 17 (Java) from Self Service."
   echo "Once installed, please close Self Service to continue..."
@@ -86,9 +81,9 @@ _self_service_install_java_17() {
   fi
 }
 
-# -------------------------------
-# Install Java 17, using self-service if missing
-# -------------------------------
+# --------------------------------------
+# Install Java 17
+# --------------------------------------
 install_java17() {
   if [ ! -d /Library/Java/JavaVirtualMachines/amazon-corretto-17.jdk ]; then
     _self_service_install_java_17
@@ -97,11 +92,11 @@ install_java17() {
   fi
 }
 
-# -------------------------------
+# --------------------------------------
 # Configure jenv for Java 17
-# -------------------------------
+# --------------------------------------
 configure_jenv_java17() {
-  if ! command -v jenv >/dev/null; then
+  if ! command -v jenv > /dev/null; then
     install_jenv "quieter"
   fi
 
@@ -114,9 +109,9 @@ configure_jenv_java17() {
   fi
 }
 
-# -------------------------------
-# Run OpenRewrite migration for Java 17 upgrade
-# -------------------------------
+# --------------------------------------
+# Run OpenRewrite Migration
+# --------------------------------------
 run_migration() {
   configure_jenv_java17
 
@@ -136,7 +131,6 @@ run_migration() {
   all_modules="${all_modules},org.openrewrite.recipes:rewrite-testing-frameworks:2.0.6"
   all_modules="${all_modules},${bt_rewrite_module}"
 
-  # Java 17 recipes
   all_recipes="org.openrewrite.java.migrate.UpgradeToJava17"
   all_recipes="${all_recipes},org.openrewrite.java.spring.boot2.SpringBoot2Junit4to5Migration"
   all_recipes="${all_recipes},org.openrewrite.java.testing.junit5.UseMockitoExtension"
@@ -145,21 +139,21 @@ run_migration() {
 
   set -x
 
-  ### Note: all maven invocations below need to be done via CodeGenie system’s maven.
   mvn -ntp -U org.openrewrite.maven:rewrite-maven-plugin:${rewrite_maven_plugin}:run \
-    -DactiveRecipes="${all_recipes}" \
-    -Drewrite.failOnDryRunResults=true
+      -DactiveRecipes="${all_recipes}" \
+      -DactiveModules="${all_modules}"
 
   set +x
 
   echo "Finished running OpenRewrite for migration"
+
   echo "17.0" > .java-version
   exit
 }
 
-# -------------------------------
-# Main Menu
-# -------------------------------
+# --------------------------------------
+# Menu
+# --------------------------------------
 echo "What do you want to do?"
 select s in "Configure Java 17 and Migrate" "Configure Java 17" "Quit"; do
   case $s in
